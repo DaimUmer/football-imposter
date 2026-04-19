@@ -1,9 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Users, UserPlus, Play, Eye, Clock, ShieldAlert, Trophy, RotateCcw, X, Check } from 'lucide-react';
 
-// STRICTLY FACT-CHECKED HINTS.
-// No club names, countries or direct facts. Only style, moments, eras or reputation.
-const FOOTBALL_PLAYERS = [
+interface FootballPlayer {
+  name: string;
+  photo: string;
+  club: string;
+  country: string;
+  hints: string[];
+}
+
+type GameState = 'SETUP' | 'PASS' | 'REVEAL' | 'DISCUSS' | 'END';
+
+const FOOTBALL_PLAYERS: FootballPlayer[] = [
   // === ACTIVE STARS ===
   { name: "Lionel Messi", photo: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg", club: "Inter Miami", country: "🇦🇷", hints: ["False nine", "Silky dribbler", "Left-footed magic", "Iconic rivalry", "Playmaker maestro", "La Liga legend", "Global icon"] },
   { name: "Cristiano Ronaldo", photo: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cristiano_Ronaldo_playing_for_Al_Nassr_FC_against_Persepolis%2C_September_2023_%28cropped%29.jpg", club: "Al Nassr", country: "🇵🇹", hints: ["Clinical finisher", "Iconic celebration", "Aerial threat", "Champions League king", "Iconic rivalry", "Elite mentality", "Record goalscorer"] },
@@ -35,11 +43,11 @@ const FOOTBALL_PLAYERS = [
   { name: "Roberto Firmino", photo: "https://upload.wikimedia.org/wikipedia/commons/3/3c/Roberto_Firmino_2018_%28cropped%29.jpg", club: "Al Ahli", country: "🇧🇷", hints: ["False nine", "No-look pass", "Premier League star", "Defensive forward", "Silky dribbler", "Iconic smile"] },
   { name: "Raheem Sterling", photo: "https://upload.wikimedia.org/wikipedia/commons/9/94/Raheem_Sterling_2018_%28cropped%29.jpg", club: "Arsenal", country: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", hints: ["Explosive winger", "Tap-in merchant", "Premier League icon", "Silky dribbler", "Dynamic attacker", "Elite movement"] },
   { name: "Marcus Rashford", photo: "https://upload.wikimedia.org/wikipedia/commons/c/c6/Marcus_Rashford_2018_%28cropped%29.jpg", club: "Manchester United", country: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", hints: ["Explosive winger", "Academy graduate", "Premier League star", "Knuckleball free-kick", "Hometown hero", "Dynamic forward"] },
-  { name: "Bruno Fernandes", photo: "https://upload.wikimedia.org/wikipedia/commons/6/sixty/Bruno_Fernandes_2020_%28cropped%29.jpg", club: "Manchester United", country: "🇵🇹", hints: ["Midfield maestro", "Playmaker", "Penalty specialist", "Premier League star", "Elite vision", "Relentless workhorse"] },
+  { name: "Bruno Fernandes", photo: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Bernardo_Silva_2018_%28cropped%29.jpg", club: "Manchester United", country: "🇵🇹", hints: ["Midfield maestro", "Playmaker", "Penalty specialist", "Premier League star", "Elite vision", "Relentless workhorse"] },
   { name: "Federico Valverde", photo: "https://upload.wikimedia.org/wikipedia/commons/4/4b/Federico_Valverde_2022_%28cropped%29.jpg", club: "Real Madrid", country: "🇺🇾", hints: ["Box-to-box", "Relentless engine", "Long-range sniper", "La Liga star", "Champions League winner", "Utility player"] },
   { name: "Gavi", photo: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Gavi_2022_%28cropped%29.jpg", club: "FC Barcelona", country: "🇪🇸", hints: ["Midfield dynamo", "Aggressive tackler", "Academy graduate", "Golden boy", "Relentless engine", "La Liga star"] },
-  { name: "Jamal Musiala", photo: "https://upload.wikimedia.org/wikipedia/commons/3/thirty/Jamal_Musiala_2022_%28cropped%29.jpg", club: "Bayern Munich", country: "🇩🇪", hints: ["Silky dribbler", "Attacking midfielder", "Bundesliga star", "Golden boy contender", "Dynamic attacker", "Elite vision"] },
-  { name: "Florian Wirtz", photo: "https://upload.wikimedia.org/wikipedia/commons/9/nine/Florian_Wirtz_2023_%28cropped%29.jpg", club: "Bayer Leverkusen", country: "🇩🇪", hints: ["Playmaker maestro", "Bundesliga star", "Elite vision", "Comeback kid", "Invincible season", "Attacking midfielder"] },
+  { name: "Jamal Musiala", photo: "https://upload.wikimedia.org/wikipedia/commons/e/e9/Luka_Modric_2018.jpg", club: "Bayern Munich", country: "🇩🇪", hints: ["Silky dribbler", "Attacking midfielder", "Bundesliga star", "Golden boy contender", "Dynamic attacker", "Elite vision"] },
+  { name: "Florian Wirtz", photo: "https://upload.wikimedia.org/wikipedia/commons/9/91/Rodri_2023.jpg", club: "Bayer Leverkusen", country: "🇩🇪", hints: ["Playmaker maestro", "Bundesliga star", "Elite vision", "Comeback kid", "Invincible season", "Attacking midfielder"] },
   { name: "Bernardo Silva", photo: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Bernardo_Silva_2018_%28cropped%29.jpg", club: "Manchester City", country: "🇵🇹", hints: ["Midfield maestro", "Relentless workhorse", "Silky dribbler", "Premier League star", "Left-footed magic", "Treble winner"] },
   { name: "Trent Alexander-Arnold", photo: "https://upload.wikimedia.org/wikipedia/commons/0/0b/Trent_Alexander-Arnold_2018_%28cropped%29.jpg", club: "Liverpool", country: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", hints: ["Attacking fullback", "Elite playmaker", "Academy graduate", "Premier League star", "Pinged passes", "Corner taken quickly"] },
   { name: "Andrew Robertson", photo: "https://upload.wikimedia.org/wikipedia/commons/4/4e/Andrew_Robertson_2018_%28cropped%29.jpg", club: "Liverpool", country: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", hints: ["Relentless workhorse", "Attacking fullback", "Premier League star", "Aggressive presser", "Crossing specialist", "Captain"] },
@@ -50,7 +58,7 @@ const FOOTBALL_PLAYERS = [
   { name: "Khvicha Kvaratskhelia", photo: "https://upload.wikimedia.org/wikipedia/commons/a/a8/Khvicha_Kvaratskhelia_2022_%28cropped%29.jpg", club: "Napoli", country: "🇬🇪", hints: ["Silky dribbler", "Serie A star", "Scudetto winner", "Dynamic winger", "Left-wing menace", "Elite flair"] },
   { name: "Lautaro Martinez", photo: "https://upload.wikimedia.org/wikipedia/commons/8/8d/Lautaro_Mart%C3%ADnez_2022_%28cropped%29.jpg", club: "Inter Milan", country: "🇦🇷", hints: ["Complete forward", "Serie A star", "World champion", "Scudetto winner", "El Toro", "Captain"] },
   { name: "Victor Osimhen", photo: "https://upload.wikimedia.org/wikipedia/commons/8/8f/Victor_Osimhen_2022_%28cropped%29.jpg", club: "Galatasaray", country: "🇳🇬", hints: ["Target man", "Explosive pace", "Serie A star", "Masked striker", "Scudetto winner", "Aerial threat"] },
-  { name: "Romelu Lukaku", photo: "https://upload.wikimedia.org/wikipedia/commons/9/ninety/Romelu_Lukaku_2018_%28cropped%29.jpg", club: "Napoli", country: "🇧🇪", hints: ["Target man", "Serie A star", "Premier League icon", "Record goalscorer", "Physical monster", "Journeyman striker"] },
+  { name: "Romelu Lukaku", photo: "https://upload.wikimedia.org/wikipedia/commons/8/81/Virgil_van_Dijk_2018.jpg", club: "Napoli", country: "🇧🇪", hints: ["Target man", "Serie A star", "Premier League icon", "Record goalscorer", "Physical monster", "Journeyman striker"] },
   { name: "Ousmane Dembélé", photo: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Ousmane_Demb%C3%A9l%C3%A9_2018_%28cropped%29.jpg", club: "PSG", country: "🇫🇷", hints: ["Two-footed attacker", "Explosive pace", "Silky dribbler", "Ligue 1 star", "La Liga winner", "World champion"] },
   { name: "Leroy Sané", photo: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Leroy_San%C3%A9_2018_%28cropped%29.jpg", club: "Bayern Munich", country: "🇩🇪", hints: ["Explosive winger", "Left-footed magic", "Bundesliga star", "Premier League winner", "Silky dribbler", "Dynamic attacker"] },
   { name: "Serge Gnabry", photo: "https://upload.wikimedia.org/wikipedia/commons/d/d4/Serge_Gnabry_2018_%28cropped%29.jpg", club: "Bayern Munich", country: "🇩🇪", hints: ["Explosive winger", "Chef celebration", "Bundesliga star", "Champions League winner", "Clinical finisher", "Dynamic attacker"] },
@@ -77,10 +85,10 @@ const FOOTBALL_PLAYERS = [
   { name: "Rivaldo", photo: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Rivaldo_%28cropped%29.jpg", club: "Retired", country: "🇧🇷", hints: ["Attacking midfielder", "Bicycle kick", "World champion", "La Liga legend", "Left-footed magic", "Elite playmaker"] },
   { name: "Roberto Carlos", photo: "https://upload.wikimedia.org/wikipedia/commons/6/60/Roberto_Carlos_%28cropped%29.jpg", club: "Retired", country: "🇧🇷", hints: ["Attacking fullback", "Power free-kick", "World champion", "La Liga legend", "Explosive pace", "Left-footed magic"] },
   { name: "Cafu", photo: "https://upload.wikimedia.org/wikipedia/commons/7/77/Cafu_2006_%28cropped%29.jpg", club: "Retired", country: "🇧🇷", hints: ["Attacking fullback", "Relentless engine", "World champion", "Serie A legend", "Overlapping runs", "Captain"] },
-  { name: "Paolo Maldini", photo: "https://upload.wikimedia.org/wikipedia/commons/4/forty/Paolo_Maldini_%28cropped%29.jpg", club: "Retired", country: "🇮🇹", hints: ["One-club man", "Elite defender", "Serie A legend", "Champions League king", "Commanding presence", "Left-back"] },
+  { name: "Paolo Maldini", photo: "https://upload.wikimedia.org/wikipedia/commons/1/14/Andrea_Pirlo_2015.jpg", club: "Retired", country: "🇮🇹", hints: ["One-club man", "Elite defender", "Serie A legend", "Champions League king", "Commanding presence", "Left-back"] },
   { name: "Franz Beckenbauer", photo: "https://upload.wikimedia.org/wikipedia/commons/5/5d/Franz_Beckenbauer_%28cropped%29.jpg", club: "Retired", country: "🇩🇪", hints: ["Sweeper", "Der Kaiser", "World champion", "Bundesliga legend", "Elite playmaker", "Leader"] },
   { name: "Johan Cruyff", photo: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Johan_Cruyff_%28cropped%29.jpg", club: "Retired", country: "🇳🇱", hints: ["Total football", "Silky dribbler", "Turn trick", "La Liga legend", "Eredivisie legend", "Playmaker maestro"] },
-  { name: "Diego Maradona", photo: "https://upload.wikimedia.org/wikipedia/commons/3/thirty/Diego_Maradona_1981_%28cropped%29.jpg", club: "Retired", country: "🇦🇷", hints: ["Midfield maestro", "Hand of God", "World champion", "Serie A legend", "Silky dribbler", "Left-footed magic"] },
+  { name: "Diego Maradona", photo: "https://upload.wikimedia.org/wikipedia/commons/2/29/Kevin_De_Bruyne_201807092.jpg", club: "Retired", country: "🇦🇷", hints: ["Midfield maestro", "Hand of God", "World champion", "Serie A legend", "Silky dribbler", "Left-footed magic"] },
   { name: "Pelé", photo: "https://upload.wikimedia.org/wikipedia/commons/5/5e/Pel%C3%A9_1970_%28cropped%29.jpg", club: "Retired", country: "🇧🇷", hints: ["Complete forward", "Three-time champion", "O Rei", "Record goalscorer", "Elite dribbler", "Global icon"] },
   { name: "David Beckham", photo: "https://upload.wikimedia.org/wikipedia/commons/c/c9/David_Beckham_%28cropped%29.jpg", club: "Retired", country: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", hints: ["Crossing specialist", "Free-kick maestro", "Premier League legend", "La Liga star", "Global icon", "Right midfield"] },
   { name: "Wayne Rooney", photo: "https://upload.wikimedia.org/wikipedia/commons/f/f8/Wayne_Rooney_2017_%28cropped%29.jpg", club: "Retired", country: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", hints: ["Complete forward", "Bicycle kick", "Premier League legend", "Record goalscorer", "Aggressive attacker", "Teenage sensation"] },
@@ -93,12 +101,12 @@ const FOOTBALL_PLAYERS = [
   { name: "Kaká", photo: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Kak%C3%A1_2013_%28cropped%29.jpg", club: "Retired", country: "🇧🇷", hints: ["Attacking midfielder", "Explosive pace", "Ballon d'Or winner", "Serie A legend", "World champion", "Champions League winner", "Playmaker maestro"] },
   { name: "Clarence Seedorf", photo: "https://upload.wikimedia.org/wikipedia/commons/1/1f/Clarence_Seedorf_%28cropped%29.jpg", club: "Retired", country: "🇳🇱", hints: ["Midfield maestro", "Champions League king", "Serie A legend", "Eredivisie icon", "Elite longevity", "Physical powerhouse"] },
   { name: "Gianluigi Buffon", photo: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Gianluigi_Buffon_2018_%28cropped%29.jpg", club: "Retired", country: "🇮🇹", hints: ["Legendary goalkeeper", "Elite longevity", "World champion", "Serie A icon", "Elite shot-stopper", "Captain", "Commanding presence"] },
-  { name: "Iker Casillas", photo: "https://upload.wikimedia.org/wikipedia/commons/4/forty/Iker_Casillas_2018_%28cropped%29.jpg", club: "Retired", country: "🇪🇸", hints: ["Legendary goalkeeper", "Saint nickname", "World champion", "Champions League king", "La Liga icon", "Reflex saves", "Club captain"] },
+  { name: "Iker Casillas", photo: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Antoine_Griezmann_2018.jpg", club: "Retired", country: "🇪🇸", hints: ["Legendary goalkeeper", "Saint nickname", "World champion", "Champions League king", "La Liga icon", "Reflex saves", "Club captain"] },
   { name: "David Villa", photo: "https://upload.wikimedia.org/wikipedia/commons/9/9b/David_Villa_2018_%28cropped%29.jpg", club: "Retired", country: "🇪🇸", hints: ["Clinical finisher", "El Guaje", "World champion", "La Liga legend", "Two-footed attacker", "Elite movement"] },
   { name: "Fernando Torres", photo: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Fernando_Torres_2018_%28cropped%29.jpg", club: "Retired", country: "🇪🇸", hints: ["Explosive pace", "El Niño", "World champion", "Premier League icon", "Champions League winner", "Clinical finisher"] },
   { name: "Toni Kroos", photo: "https://upload.wikimedia.org/wikipedia/commons/9/9e/Toni_Kroos_2022_%28cropped%29.jpg", club: "Retired", country: "🇩🇪", hints: ["Midfield maestro", "Sniper passing", "Elite longevity", "World champion", "Champions League king", "La Liga legend"] },
   { name: "Zlatan Ibrahimović", photo: "https://upload.wikimedia.org/wikipedia/commons/0/08/Zlatan_Ibrahimovi%C4%87_2018.jpg", club: "Retired", country: "🇸🇪", hints: ["Target man", "Acrobatic goals", "Martial arts kicks", "Confident aura", "Serie A legend", "Ligue 1 icon", "Journeyman striker"] },
-  { name: "Sergio Agüero", photo: "https://upload.wikimedia.org/wikipedia/commons/5/fifty/Sergio_Ag%C3%BCero_2018_%28cropped%29.jpg", club: "Retired", country: "🇦🇷", hints: ["Clinical finisher", "Late title winner", "Premier League legend", "Record goalscorer", "Near-post strike", "Low center of gravity"] },
+  { name: "Sergio Agüero", photo: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Son_Heung-min_2022.jpg", club: "Retired", country: "🇦🇷", hints: ["Clinical finisher", "Late title winner", "Premier League legend", "Record goalscorer", "Near-post strike", "Low center of gravity"] },
   { name: "Andrés Iniesta", photo: "https://upload.wikimedia.org/wikipedia/commons/f/f4/Andr%C3%A9s_Iniesta_2018_%28cropped%29.jpg", club: "Retired", country: "🇪🇸", hints: ["Midfield maestro", "World Cup winner", "La Liga legend", "Silky dribbler", "Big-game player", "Illusionist"] },
   { name: "Xavi Hernández", photo: "https://upload.wikimedia.org/wikipedia/commons/a/a0/Xavi_Hern%C3%A1ndez_2018_%28cropped%29.jpg", club: "Retired", country: "🇪🇸", hints: ["Midfield maestro", "Tiki-taka king", "World champion", "La Liga legend", "Visionary passing", "Assist king"] },
   { name: "Ronaldinho", photo: "https://upload.wikimedia.org/wikipedia/commons/e/e2/Ronaldinho_2007.jpg", club: "Retired", country: "🇧🇷", hints: ["Flair player", "Iconic smile", "Elastico skill", "La Liga legend", "World champion", "Standing ovation", "Attacking midfielder"] },
@@ -130,33 +138,24 @@ const FOOTBALL_PLAYERS = [
   { name: "Yaya Touré", photo: "https://upload.wikimedia.org/wikipedia/commons/a/a5/Yaya_Tour%C3%A9_2019_%28cropped%29.jpg", club: "Retired", country: "🇨🇮", hints: ["Box-to-box", "Midfield powerhouse", "Premier League legend", "Unstoppable runs", "Elite penalty taker", "African king"] },
   { name: "Alphonso Davies", photo: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Alphonso_Davies_2022_%28cropped%29.jpg", club: "Bayern Munich", country: "🇨🇦", hints: ["Attacking fullback", "Explosive pace", "Bundesliga star", "Roadrunner", "Champions League winner", "Dynamic defender"] },
   { name: "Alexander Isak", photo: "https://upload.wikimedia.org/wikipedia/commons/7/7a/Alexander_Isak_2022_%28cropped%29.jpg", club: "Newcastle United", country: "🇸🇪", hints: ["Complete forward", "Silky dribbler", "Premier League star", "Tall striker", "Clinical finisher", "Dynamic attacker"] },
-  { name: "Dominik Szoboszlai", photo: "https://upload.wikimedia.org/wikipedia/commons/3/3d/Dominik_Szoboszlai_2023_%28cropped%29.jpg", club: "Liverpool", country: "🇭🇺", hints: ["Box-to-box", "Long-range sniper", "Premier League star", "Elite ball-striker", "Relentless engine", "Midfield dynamo"] }
+  { name: "Dominik Szoboszlai", photo: "https://upload.wikimedia.org/wikipedia/commons/3/3d/Dominik_Szoboszlai_2023_%28cropped%29.jpg", club: "Liverpool", country: "🇭🇺", hints: ["Box-to-box", "Long-range sniper", "Premier League star", "Elite ball-striker", "Relentless engine", "Midfield dynamo"] },
 ];
 
 export default function App() {
-  const [gameState, setGameState] = useState('SETUP');
-  
-  // Players State (Friends playing)
-  const [players, setPlayers] = useState(['Player 1', 'Player 2', 'Player 3']);
-  const [newPlayerName, setNewPlayerName] = useState('');
-  
-  // Deck State (No repeats until empty)
-  const [deck, setDeck] = useState([]);
-  
-  // In-Game State
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
-  const [imposterIndex, setImposterIndex] = useState(-1);
-  const [targetFootballer, setTargetFootballer] = useState(null);
-  const [currentHint, setCurrentHint] = useState("");
-  
-  // UI State
-  const [isRevealed, setIsRevealed] = useState(false);
-  const [timerLeft, setTimerLeft] = useState(300); // 5 minutes
-  const timerRef = useRef(null);
+  const [gameState, setGameState] = useState<GameState>('SETUP');
+  const [players, setPlayers] = useState<string[]>(['Player 1', 'Player 2', 'Player 3']);
+  const [newPlayerName, setNewPlayerName] = useState<string>('');
+  const [deck, setDeck] = useState<FootballPlayer[]>([]);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState<number>(0);
+  const [imposterIndex, setImposterIndex] = useState<number>(-1);
+  const [targetFootballer, setTargetFootballer] = useState<FootballPlayer | null>(null);
+  const [currentHint, setCurrentHint] = useState<string>('');
+  const [isRevealed, setIsRevealed] = useState<boolean>(false);
+  const [timerLeft, setTimerLeft] = useState<number>(300);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Helper to shuffle array randomly
-  const shuffleArray = (array) => {
-    let shuffled = [...array];
+  const shuffleArray = (array: FootballPlayer[]): FootballPlayer[] => {
+    const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -164,8 +163,7 @@ export default function App() {
     return shuffled;
   };
 
-  // === SETUP FUNCTIONS ===
-  const addPlayer = (e) => {
+  const addPlayer = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     if (newPlayerName.trim() && players.length < 15) {
       setPlayers([...players, newPlayerName.trim()]);
@@ -173,45 +171,36 @@ export default function App() {
     }
   };
 
-  const removePlayer = (indexToRemove) => {
+  const removePlayer = (indexToRemove: number): void => {
     setPlayers(players.filter((_, index) => index !== indexToRemove));
   };
 
-  const startGame = () => {
+  const startGame = (): void => {
     if (players.length < 3) {
-      alert("You need at least 3 players to play!");
+      alert('You need at least 3 players to play!');
       return;
     }
-    
-    // Select Imposter
     const randomImposter = Math.floor(Math.random() * players.length);
     setImposterIndex(randomImposter);
-    
-    // Handle the Deck (No Repeats Logic)
+
     let currentDeck = [...deck];
     if (currentDeck.length === 0) {
-      // If deck is empty, shuffle a brand new one
       currentDeck = shuffleArray(FOOTBALL_PLAYERS);
     }
-    
-    // Pop the last player from the deck
-    const selectedPlayer = currentDeck.pop();
-    setDeck(currentDeck); 
+    const selectedPlayer = currentDeck.pop()!;
+    setDeck(currentDeck);
     setTargetFootballer(selectedPlayer);
 
-    // Randomly select ONE hint from the player's hints array
     const randomHintIndex = Math.floor(Math.random() * selectedPlayer.hints.length);
     setCurrentHint(selectedPlayer.hints[randomHintIndex]);
-    
     setCurrentPlayerIndex(0);
     setGameState('PASS');
   };
 
-  // === IN-GAME FUNCTIONS ===
-  const handleRevealStart = () => setIsRevealed(true);
-  const handleRevealEnd = () => setIsRevealed(false);
+  const handleRevealStart = (): void => setIsRevealed(true);
+  const handleRevealEnd = (): void => setIsRevealed(false);
 
-  const nextTurn = () => {
+  const nextTurn = (): void => {
     if (currentPlayerIndex < players.length - 1) {
       setCurrentPlayerIndex(currentPlayerIndex + 1);
       setGameState('PASS');
@@ -221,13 +210,13 @@ export default function App() {
     }
   };
 
-  const startTimer = () => {
-    setTimerLeft(300); 
+  const startTimer = (): void => {
+    setTimerLeft(300);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setTimerLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timerRef.current);
+          clearInterval(timerRef.current!);
           return 0;
         }
         return prev - 1;
@@ -235,18 +224,20 @@ export default function App() {
     }, 1000);
   };
 
-  const endTimerAndVote = () => {
+  const endTimerAndVote = (): void => {
     if (timerRef.current) clearInterval(timerRef.current);
     setGameState('END');
   };
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // === RENDERERS ===
+  const fallbackSrc = (name: string): string =>
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=10b981&color=fff&size=256`;
+
   const renderSetup = () => (
     <div className="flex flex-col h-full max-w-md mx-auto animate-fade-in">
       <div className="text-center mb-8">
@@ -259,39 +250,33 @@ export default function App() {
           <p className="text-xs text-slate-500 mt-2">{deck.length} players remaining in deck</p>
         )}
       </div>
-
       <div className="bg-slate-800/50 rounded-3xl p-6 border border-slate-700/50 shadow-xl backdrop-blur-sm flex-1 flex flex-col">
         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <Users size={20} className="text-emerald-400" /> 
+          <Users size={20} className="text-emerald-400" />
           Squad List ({players.length})
         </h2>
-        
         <form onSubmit={addPlayer} className="flex gap-2 mb-6">
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={newPlayerName}
             onChange={(e) => setNewPlayerName(e.target.value)}
-            placeholder="Enter player name..." 
+            placeholder="Enter player name..."
             className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
             maxLength={15}
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={!newPlayerName.trim() || players.length >= 15}
             className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 text-white rounded-xl px-4 py-3 font-semibold transition-all flex items-center justify-center"
           >
             <UserPlus size={20} />
           </button>
         </form>
-
         <ul className="space-y-2 mb-8 flex-1 overflow-y-auto pr-2 custom-scrollbar">
           {players.map((player, index) => (
             <li key={index} className="flex items-center justify-between bg-slate-900/30 border border-slate-800 rounded-xl px-4 py-3 animate-slide-in">
               <span className="text-white font-medium">{player}</span>
-              <button 
-                onClick={() => removePlayer(index)}
-                className="text-slate-400 hover:text-red-400 transition-colors p-1"
-              >
+              <button onClick={() => removePlayer(index)} className="text-slate-400 hover:text-red-400 transition-colors p-1">
                 <X size={18} />
               </button>
             </li>
@@ -300,14 +285,13 @@ export default function App() {
             <li className="text-center text-slate-500 py-4 italic">No players added yet.</li>
           )}
         </ul>
-
-        <button 
+        <button
           onClick={startGame}
           disabled={players.length < 3}
           className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 disabled:from-slate-700 disabled:to-slate-800 text-white rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95"
         >
-          {players.length < 3 ? 'Need at least 3 players' : 'Kick Off'} 
-          <Play size={20} className={players.length >= 3 ? "fill-current" : ""} />
+          {players.length < 3 ? 'Need at least 3 players' : 'Kick Off'}
+          <Play size={20} className={players.length >= 3 ? 'fill-current' : ''} />
         </button>
       </div>
     </div>
@@ -320,8 +304,7 @@ export default function App() {
       </div>
       <h2 className="text-2xl text-slate-300 mb-2">Pass the device to</h2>
       <h1 className="text-5xl font-black text-white mb-12 tracking-tight">{players[currentPlayerIndex]}</h1>
-      
-      <button 
+      <button
         onClick={() => setGameState('REVEAL')}
         className="w-full max-w-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl py-4 font-bold text-lg shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2"
       >
@@ -332,15 +315,12 @@ export default function App() {
 
   const renderReveal = () => {
     const isImposter = currentPlayerIndex === imposterIndex;
-
     return (
       <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center w-full animate-fade-in">
         <h2 className="text-xl font-semibold text-slate-300 mb-8">
           Player {currentPlayerIndex + 1} of {players.length}
         </h2>
-
-        {/* Secret Card Area */}
-        <div 
+        <div
           className="w-full aspect-[3/4] max-w-sm relative rounded-3xl cursor-pointer select-none touch-none"
           onMouseDown={handleRevealStart}
           onMouseUp={handleRevealEnd}
@@ -348,16 +328,12 @@ export default function App() {
           onTouchStart={handleRevealStart}
           onTouchEnd={handleRevealEnd}
         >
-          {/* Unrevealed State (Front of card) */}
           <div className={`absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-opacity duration-300 ${isRevealed ? 'opacity-0 z-0' : 'opacity-100 z-10'}`}>
             <Eye className="text-emerald-400 mb-4" size={64} />
             <h3 className="text-2xl font-bold text-white mb-2">Secret Role</h3>
             <p className="text-slate-400 text-sm max-w-[200px]">Press and hold anywhere on this card to reveal</p>
           </div>
-
-          {/* Revealed State (Back of card) */}
           <div className={`absolute inset-0 rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-opacity duration-300 p-6 overflow-hidden ${isRevealed ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${isImposter ? 'bg-gradient-to-br from-red-900 to-red-950 border-2 border-red-500/50' : 'bg-gradient-to-br from-emerald-900 to-emerald-950 border-2 border-emerald-500/50'}`}>
-            
             {isImposter ? (
               <div className="flex flex-col items-center justify-center text-center h-full animate-scale-in w-full">
                 <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
@@ -365,7 +341,6 @@ export default function App() {
                 </div>
                 <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-wider">You are the Imposter!</h2>
                 <p className="text-red-200/80 mb-8">Try to blend in. Do not get caught.</p>
-                
                 <div className="bg-red-950/80 border border-red-800 rounded-2xl p-6 w-full">
                   <span className="text-red-400 text-xs font-bold uppercase tracking-widest block mb-2">Your Secret Hint</span>
                   <p className="text-white font-black text-3xl uppercase tracking-tight">"{currentHint}"</p>
@@ -373,39 +348,41 @@ export default function App() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center text-center w-full h-full animate-scale-in">
-                 <span className="text-emerald-400 text-sm font-bold uppercase tracking-widest block mb-4">Target Player</span>
-                 
-                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500 mb-4 shadow-xl bg-slate-800 relative">
-                    <div className="absolute inset-0 flex items-center justify-center z-0">
-                      <Users className="text-slate-600" size={40} />
-                    </div>
-                    <img 
-                      src={targetFootballer.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetFootballer.name)}&background=10b981&color=fff&size=256`} 
+                <span className="text-emerald-400 text-sm font-bold uppercase tracking-widest block mb-4">Target Player</span>
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500 mb-4 shadow-xl bg-slate-800 relative">
+                  <div className="absolute inset-0 flex items-center justify-center z-0">
+                    <Users className="text-slate-600" size={40} />
+                  </div>
+                  {targetFootballer && (
+                    <img
+                      src={targetFootballer.photo || fallbackSrc(targetFootballer.name)}
                       alt={targetFootballer.name}
                       className="w-full h-full object-cover relative z-10"
-                      onError={(e) => { 
-                        e.target.onerror = null; 
-                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(targetFootballer.name)}&background=10b981&color=fff&size=256`; 
+                      onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = fallbackSrc(targetFootballer.name);
                       }}
                     />
-                 </div>
-
-                 <h2 className="text-3xl font-black text-white mb-1">{targetFootballer.name}</h2>
-                 <div className="flex items-center justify-center gap-2 text-emerald-100/70 text-lg mb-6 w-full">
-                    <span>{targetFootballer.country}</span>
-                    <span>•</span>
-                    <span className="truncate max-w-[200px]">{targetFootballer.club}</span>
-                 </div>
-                 
-                 <div className="bg-emerald-950/80 border border-emerald-800 rounded-xl p-4 w-full mt-auto">
-                    <p className="text-emerald-200 text-sm">Describe this player to others, but don't be too obvious! The imposter is listening.</p>
-                 </div>
+                  )}
+                </div>
+                {targetFootballer && (
+                  <>
+                    <h2 className="text-3xl font-black text-white mb-1">{targetFootballer.name}</h2>
+                    <div className="flex items-center justify-center gap-2 text-emerald-100/70 text-lg mb-6 w-full">
+                      <span>{targetFootballer.country}</span>
+                      <span>•</span>
+                      <span className="truncate max-w-[200px]">{targetFootballer.club}</span>
+                    </div>
+                  </>
+                )}
+                <div className="bg-emerald-950/80 border border-emerald-800 rounded-xl p-4 w-full mt-auto">
+                  <p className="text-emerald-200 text-sm">Describe this player to others, but don't be too obvious! The imposter is listening.</p>
+                </div>
               </div>
             )}
           </div>
         </div>
-
-        <button 
+        <button
           onClick={nextTurn}
           className="mt-10 w-full max-w-xs bg-slate-700 hover:bg-slate-600 text-white rounded-2xl py-4 font-bold text-lg transition-all transform active:scale-95"
         >
@@ -420,16 +397,13 @@ export default function App() {
       <div className="bg-slate-800/50 border border-slate-700 rounded-3xl p-8 w-full backdrop-blur-sm shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-2">Discussion Phase</h2>
         <p className="text-slate-400 mb-8">Ask one question each. Find out who doesn't know the footballer!</p>
-        
         <div className={`text-7xl font-black tabular-nums tracking-tight mb-8 ${timerLeft < 60 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
           {formatTime(timerLeft)}
         </div>
-
         <div className="flex justify-center mb-8">
-           <Clock size={32} className={timerLeft < 60 ? 'text-red-500' : 'text-emerald-400'} />
+          <Clock size={32} className={timerLeft < 60 ? 'text-red-500' : 'text-emerald-400'} />
         </div>
-
-        <button 
+        <button
           onClick={endTimerAndVote}
           className="w-full bg-red-600 hover:bg-red-500 text-white rounded-2xl py-4 font-bold text-lg transition-all transform active:scale-95 shadow-lg shadow-red-600/20"
         >
@@ -443,37 +417,33 @@ export default function App() {
     <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center animate-fade-in w-full">
       <h1 className="text-4xl font-black text-white mb-2">Game Over!</h1>
       <p className="text-slate-300 mb-8">Who did you vote for?</p>
-
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-6 w-full shadow-2xl mb-6 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-red-500/10 blur-3xl rounded-full pointer-events-none"></div>
-
         <div className="relative z-10">
           <span className="text-slate-400 text-sm font-bold uppercase tracking-widest block mb-2">The Imposter Was</span>
           <h2 className="text-4xl font-black text-red-500 mb-8">{players[imposterIndex]}</h2>
-          
           <div className="h-px w-full bg-slate-700 mb-8"></div>
-          
           <span className="text-slate-400 text-sm font-bold uppercase tracking-widest block mb-4">The Footballer Was</span>
-          
-          <div className="flex items-center gap-4 bg-slate-950/50 rounded-2xl p-4 border border-slate-800">
-            <img 
-              src={targetFootballer.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetFootballer.name)}&background=10b981&color=fff&size=256`} 
-              alt={targetFootballer.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500"
-              onError={(e) => { 
-                e.target.onerror = null; 
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(targetFootballer.name)}&background=10b981&color=fff&size=256`; 
-              }}
-            />
-            <div className="text-left overflow-hidden">
-              <h3 className="text-xl font-bold text-white truncate">{targetFootballer.name}</h3>
-              <p className="text-emerald-400 text-sm truncate">{targetFootballer.club} • {targetFootballer.country}</p>
+          {targetFootballer && (
+            <div className="flex items-center gap-4 bg-slate-950/50 rounded-2xl p-4 border border-slate-800">
+              <img
+                src={targetFootballer.photo || fallbackSrc(targetFootballer.name)}
+                alt={targetFootballer.name}
+                className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500"
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackSrc(targetFootballer.name);
+                }}
+              />
+              <div className="text-left overflow-hidden">
+                <h3 className="text-xl font-bold text-white truncate">{targetFootballer.name}</h3>
+                <p className="text-emerald-400 text-sm truncate">{targetFootballer.club} • {targetFootballer.country}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
-
-      <button 
+      <button
         onClick={() => setGameState('SETUP')}
         className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl py-4 font-bold text-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 shadow-lg"
       >
@@ -488,7 +458,6 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900 via-slate-950 to-slate-950"></div>
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
       </div>
-
       <main className="flex-1 container mx-auto px-4 py-8 relative z-10 h-[100dvh] flex flex-col">
         {gameState === 'SETUP' && renderSetup()}
         {gameState === 'PASS' && renderPass()}
@@ -496,19 +465,15 @@ export default function App() {
         {gameState === 'DISCUSS' && renderDiscuss()}
         {gameState === 'END' && renderEnd()}
       </main>
-
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.5); border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(52, 211, 153, 0.3); border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.6); }
-        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
-
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
       `}} />
